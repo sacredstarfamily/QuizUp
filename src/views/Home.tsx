@@ -4,9 +4,10 @@ import Form from 'react-bootstrap/Form';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import QuestionCard from '../components/QuestionCard';
+import QuestionForm from '../components/QuestionForm';
+import {  QuestionType, QuestionFormDataType } from '../types';
+import { getAllQuizQs, createQuestion } from '../lib/apiWrapper';
 
-import {  QuestionType } from '../types';
-import { getAllQuizQs } from '../lib/apiWrapper';
 
 
 type Sorting = {
@@ -18,14 +19,15 @@ type Sorting = {
 
 
 type HomeProps = {
-   
+    currentUser: UserType|null,
+    flashMessage: (newMessage:string, newCategory:CategoryType) => void,
     handleClick: () => void
 }
 
-export default function Home({ handleClick}: HomeProps) {
-
+export default function Home({ handleClick, flashMessage, currentUser}: HomeProps) {
+    const [showForm, setShowForm] = useState(false);
     const [questions, setQuestions] = useState<QuestionType[]>([])
-
+    const [fetchQuestionData, setFetchQuestionData] = useState(true);
     useEffect(() => {
         console.log('Hello World')
         async function fetchData(){
@@ -39,7 +41,7 @@ export default function Home({ handleClick}: HomeProps) {
         }
 
         fetchData();
-    }, [])
+    }, [fetchQuestionData])
 
     const [searchTerm, setSearchTerm] = useState('');
 
@@ -60,14 +62,22 @@ export default function Home({ handleClick}: HomeProps) {
         setSearchTerm(e.target.value);
     }
 
- 
+    const addNewQuestion = async (newQuestionData: QuestionFormDataType) => {
+        const token = localStorage.getItem('token')||'';
+        const response = await createQuestion(token, newQuestionData);
+        if(response.error){
+         flashMessage(response.error, 'danger')
+        } else {
+         console.log(response);
+         flashMessage(`${response.data!} has been added`, 'success');
+         setShowForm(false);
+         setFetchQuestionData(!fetchQuestionData);
+        }
+     }
 
     return (
         <>
-           
-                <Button variant='primary' onClick={handleClick}>Click Me!</Button>
-                
-                <Row>
+            <Row>
                     <Col xs={12} md={6}>
                         <Form.Control value={searchTerm} placeholder='Search Posts' onChange={handleInputChange} />
                     </Col>
@@ -81,10 +91,10 @@ export default function Home({ handleClick}: HomeProps) {
                         </Form.Select> */}
                     </Col>
                     <Col>
-                      {/*   <Button className='w-100' variant='success' onClick={() => setShowForm(!showForm)}>{showForm ? 'Hide Form' : 'Add Post+'}</Button> */}
+                       <Button className='w-100' variant='success' onClick={() => setShowForm(!showForm)}>{showForm ? 'Hide Form' : 'Add Question+'}</Button> 
                     </Col>
-                </Row>
-              {/*   { showForm && <PostForm addNewPost={addNewPost} /> } */}
+            </Row>
+                { showForm && <QuestionForm addNewQuestion={addNewQuestion} /> } 
                 { questions.filter(p => p.author.toLowerCase().includes(searchTerm.toLowerCase())).map( p => <QuestionCard key={p.id} question={p} /> )}
         </>
     )
